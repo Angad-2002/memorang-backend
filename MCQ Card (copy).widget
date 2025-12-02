@@ -1,0 +1,193 @@
+{
+  "version": "1.0",
+  "name": "MCQ Card (copy)",
+  "template": "{\"type\":\"Card\",\"size\":\"md\",\"children\":[{%- set _c -%},{\"type\":\"Row\",\"children\":[{\"type\":\"Caption\",\"value\":{{ ((\"Question \" ~ index ~ \" of \" ~ total)) | tojson }}},{\"type\":\"Spacer\"},{\"type\":\"Badge\",\"label\":\"MCQ\",\"color\":\"info\"}]},{\"type\":\"Title\",\"value\":{{ (prompt) | tojson }},\"size\":\"sm\"},{\"type\":\"Form\",\"onSubmitAction\":{\"type\":\"mcq.submit\",\"payload\":{\"questionId\":{{ (questionId) | tojson }},\"index\":{{ (index) | tojson }}}},\"children\":[{\"type\":\"Col\",\"gap\":3,\"children\":[{\"type\":\"RadioGroup\",\"name\":\"answer\",\"options\":{{ (options) | tojson }},\"defaultValue\":{{ (selected) | tojson }},\"direction\":\"col\",\"required\":true,\"disabled\":{{ ((status == \"correct\")) | tojson }}},{\"type\":\"Row\",\"children\":[{\"type\":\"Button\",\"submit\":true,\"label\":{% if status == \"incorrect\" %}\"Try again\"{% else %}\"Submit answer\"{% endif %},\"style\":\"primary\",\"disabled\":{{ ((status == \"correct\")) | tojson }}},{\"type\":\"Button\",\"label\":\"Clear\",\"variant\":\"outline\",\"onClickAction\":{\"type\":\"mcq.clear\",\"payload\":{\"questionId\":{{ (questionId) | tojson }},\"index\":{{ (index) | tojson }}}}},{\"type\":\"Spacer\"},{\"type\":\"Button\",\"label\":{% if index == total %}\"Finish\"{% else %}\"Next\"{% endif %},\"iconEnd\":\"chevron-right\",\"onClickAction\":{\"type\":{% if index == total %}\"mcq.finish\"{% else %}\"mcq.next\"{% endif %},\"payload\":{\"questionId\":{{ (questionId) | tojson }},\"index\":{{ (index) | tojson }}}},\"disabled\":{{ ((status != \"correct\")) | tojson }}}]}]}]}{%-if status == \"incorrect\" -%},{\"type\":\"Row\",\"gap\":2,\"padding\":3,\"background\":\"yellow-100\",\"radius\":\"md\",\"align\":\"start\",\"children\":[{\"type\":\"Box\",\"background\":\"yellow-400\",\"radius\":\"full\",\"size\":18,\"align\":\"center\",\"justify\":\"center\",\"children\":[{\"type\":\"Icon\",\"name\":\"circle-question\",\"color\":\"white\",\"size\":\"sm\"}]},{\"type\":\"Text\",\"value\":{{ (feedback.hint if feedback.hint is defined and feedback.hint is not none else \"Try again.\") | tojson }},\"size\":\"sm\"}]}{%-else-%}{%-endif-%}{%-if status == \"correct\" -%},{\"type\":\"Row\",\"gap\":2,\"padding\":3,\"background\":\"green-100\",\"radius\":\"md\",\"align\":\"start\",\"children\":[{\"type\":\"Box\",\"background\":\"green-500\",\"radius\":\"full\",\"size\":18,\"align\":\"center\",\"justify\":\"center\",\"children\":[{\"type\":\"Icon\",\"name\":\"check-circle-filled\",\"color\":\"white\",\"size\":\"sm\"}]},{\"type\":\"Text\",\"value\":{{ (feedback.explanation if feedback.explanation is defined and feedback.explanation is not none else \"Nice work!\") | tojson }},\"size\":\"sm\"}]}{%-else-%}{%-endif-%}{%- endset -%}{{- (_c[1:] if _c and _c[0] == ',' else _c) -}}]}",
+  "jsonSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "questionId": {
+        "type": "string"
+      },
+      "index": {
+        "type": "integer",
+        "minimum": -9007199254740991,
+        "maximum": 9007199254740991
+      },
+      "total": {
+        "type": "integer",
+        "minimum": -9007199254740991,
+        "maximum": 9007199254740991
+      },
+      "prompt": {
+        "type": "string"
+      },
+      "options": {
+        "minItems": 2,
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            },
+            "disabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "label",
+            "value"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "selected": {
+        "type": "string"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "idle",
+          "correct",
+          "incorrect"
+        ]
+      },
+      "feedback": {
+        "type": "object",
+        "properties": {
+          "hint": {
+            "type": "string"
+          },
+          "explanation": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "questionId",
+      "index",
+      "total",
+      "prompt",
+      "options",
+      "status",
+      "feedback"
+    ],
+    "additionalProperties": false
+  },
+  "outputJsonPreview": {
+    "type": "Card",
+    "size": "md",
+    "children": [
+      {
+        "type": "Row",
+        "children": [
+          {
+            "type": "Caption",
+            "value": "Question 1 of 3"
+          },
+          {
+            "type": "Spacer"
+          },
+          {
+            "type": "Badge",
+            "label": "MCQ",
+            "color": "info"
+          }
+        ]
+      },
+      {
+        "type": "Title",
+        "value": "What problem is identified in the brief?",
+        "size": "sm"
+      },
+      {
+        "type": "Form",
+        "onSubmitAction": {
+          "type": "mcq.submit",
+          "payload": {
+            "questionId": "q1"
+          }
+        },
+        "children": [
+          {
+            "type": "Col",
+            "gap": 3,
+            "children": [
+              {
+                "type": "RadioGroup",
+                "name": "answer",
+                "options": [
+                  {
+                    "label": "AI tools lack a structured, persistent learning flow.",
+                    "value": "a"
+                  },
+                  {
+                    "label": "AI models cannot read PDFs.",
+                    "value": "b"
+                  },
+                  {
+                    "label": "Online courses are too long.",
+                    "value": "c"
+                  },
+                  {
+                    "label": "PDF uploads are insecure.",
+                    "value": "d"
+                  }
+                ],
+                "defaultValue": "",
+                "direction": "col",
+                "required": true,
+                "disabled": false
+              },
+              {
+                "type": "Row",
+                "children": [
+                  {
+                    "type": "Button",
+                    "submit": true,
+                    "label": "Submit answer",
+                    "style": "primary",
+                    "disabled": false
+                  },
+                  {
+                    "type": "Button",
+                    "label": "Clear",
+                    "variant": "outline",
+                    "onClickAction": {
+                      "type": "mcq.clear",
+                      "payload": {
+                        "questionId": "q1"
+                      }
+                    }
+                  },
+                  {
+                    "type": "Spacer"
+                  },
+                  {
+                    "type": "Button",
+                    "label": "Next",
+                    "iconEnd": "chevron-right",
+                    "onClickAction": {
+                      "type": "mcq.next",
+                      "payload": {
+                        "questionId": "q1"
+                      }
+                    },
+                    "disabled": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "encodedWidget": "eyJpZCI6IndpZ19ocWx3ZG1mayIsIm5hbWUiOiJNQ1EgQ2FyZCAoY29weSkiLCJ2aWV3IjoiPENhcmRcbiAgc2l6ZT1cIm1kXCJcbiAgYXNGb3JtXG4gIGNvbmZpcm09e3tcbiAgICBsYWJlbDpcbiAgICAgIHN0YXR1cyA9PT0gXCJjb3JyZWN0XCJcbiAgICAgICAgPyBpbmRleCA9PT0gdG90YWxcbiAgICAgICAgICA_IFwiRmluaXNoXCJcbiAgICAgICAgICA6IFwiTmV4dFwiXG4gICAgICAgIDogc3RhdHVzID09PSBcImluY29ycmVjdFwiXG4gICAgICAgICAgPyBcIlRyeSBhZ2FpblwiXG4gICAgICAgICAgOiBcIlN1Ym1pdCBhbnN3ZXJcIixcbiAgICBhY3Rpb246IHtcbiAgICAgIHR5cGU6XG4gICAgICAgIHN0YXR1cyA9PT0gXCJjb3JyZWN0XCJcbiAgICAgICAgICA_IGluZGV4ID09PSB0b3RhbFxuICAgICAgICAgICAgPyBcIm1jcS5maW5pc2hcIlxuICAgICAgICAgICAgOiBcIm1jcS5uZXh0XCJcbiAgICAgICAgICA6IFwibWNxLnN1Ym1pdFwiLFxuICAgICAgcGF5bG9hZDogeyBxdWVzdGlvbklkIH0sXG4gICAgfSxcbiAgfX1cbj5cbiAgPFJvdz5cbiAgICA8Q2FwdGlvbiB2YWx1ZT17YFF1ZXN0aW9uICR7aW5kZXh9IG9mICR7dG90YWx9YH0gLz5cbiAgICA8U3BhY2VyIC8-XG4gICAgPEJhZGdlIGxhYmVsPVwiTUNRXCIgY29sb3I9XCJpbmZvXCIgLz5cbiAgPC9Sb3c-XG5cbiAgPFRpdGxlIHZhbHVlPXtwcm9tcHR9IHNpemU9XCJzbVwiIC8-XG5cbiAgPFJhZGlvR3JvdXBcbiAgICBuYW1lPVwiYW5zd2VyXCJcbiAgICBvcHRpb25zPXtvcHRpb25zfVxuICAgIGRlZmF1bHRWYWx1ZT17c2VsZWN0ZWR9XG4gICAgZGlyZWN0aW9uPVwiY29sXCJcbiAgICByZXF1aXJlZFxuICAgIGRpc2FibGVkPXtzdGF0dXMgPT09IFwiY29ycmVjdFwifVxuICAvPlxuXG4gIHtzdGF0dXMgPT09IFwiaW5jb3JyZWN0XCIgJiYgKFxuICAgIDxSb3cgZ2FwPXsyfSBwYWRkaW5nPXszfSBiYWNrZ3JvdW5kPVwieWVsbG93LTEwMFwiIHJhZGl1cz1cIm1kXCIgYWxpZ249XCJzdGFydFwiPlxuICAgICAgPEJveFxuICAgICAgICBiYWNrZ3JvdW5kPVwieWVsbG93LTQwMFwiXG4gICAgICAgIHJhZGl1cz1cImZ1bGxcIlxuICAgICAgICBzaXplPXsxOH1cbiAgICAgICAgYWxpZ249XCJjZW50ZXJcIlxuICAgICAgICBqdXN0aWZ5PVwiY2VudGVyXCJcbiAgICAgID5cbiAgICAgICAgPEljb24gbmFtZT1cImNpcmNsZS1xdWVzdGlvblwiIGNvbG9yPVwid2hpdGVcIiBzaXplPVwic21cIiAvPlxuICAgICAgPC9Cb3g-XG4gICAgICA8VGV4dCB2YWx1ZT17ZmVlZGJhY2suaGludCA_PyBcIlRyeSBhZ2Fpbi5cIn0gc2l6ZT1cInNtXCIgLz5cbiAgICA8L1Jvdz5cbiAgKX1cblxuICB7c3RhdHVzID09PSBcImNvcnJlY3RcIiAmJiAoXG4gICAgPFJvdyBnYXA9ezJ9IHBhZGRpbmc9ezN9IGJhY2tncm91bmQ9XCJncmVlbi0xMDBcIiByYWRpdXM9XCJtZFwiIGFsaWduPVwic3RhcnRcIj5cbiAgICAgIDxCb3hcbiAgICAgICAgYmFja2dyb3VuZD1cImdyZWVuLTUwMFwiXG4gICAgICAgIHJhZGl1cz1cImZ1bGxcIlxuICAgICAgICBzaXplPXsxOH1cbiAgICAgICAgYWxpZ249XCJjZW50ZXJcIlxuICAgICAgICBqdXN0aWZ5PVwiY2VudGVyXCJcbiAgICAgID5cbiAgICAgICAgPEljb24gbmFtZT1cImNoZWNrLWNpcmNsZS1maWxsZWRcIiBjb2xvcj1cIndoaXRlXCIgc2l6ZT1cInNtXCIgLz5cbiAgICAgIDwvQm94PlxuICAgICAgPFRleHQgdmFsdWU9e2ZlZWRiYWNrLmV4cGxhbmF0aW9uID8_IFwiTmljZSB3b3JrIVwifSBzaXplPVwic21cIiAvPlxuICAgIDwvUm93PlxuICApfVxuPC9DYXJkPiIsImRlZmF1bHRTdGF0ZSI6eyJxdWVzdGlvbklkIjoicTEiLCJpbmRleCI6MSwidG90YWwiOjMsInByb21wdCI6IldoYXQgcHJvYmxlbSBpcyBpZGVudGlmaWVkIGluIHRoZSBicmllZj8iLCJvcHRpb25zIjpbeyJsYWJlbCI6IkFJIHRvb2xzIGxhY2sgYSBzdHJ1Y3R1cmVkLCBwZXJzaXN0ZW50IGxlYXJuaW5nIGZsb3cuIiwidmFsdWUiOiJhIn0seyJsYWJlbCI6IkFJIG1vZGVscyBjYW5ub3QgcmVhZCBQREZzLiIsInZhbHVlIjoiYiJ9LHsibGFiZWwiOiJPbmxpbmUgY291cnNlcyBhcmUgdG9vIGxvbmcuIiwidmFsdWUiOiJjIn0seyJsYWJlbCI6IlBERiB1cGxvYWRzIGFyZSBpbnNlY3VyZS4iLCJ2YWx1ZSI6ImQifV0sInNlbGVjdGVkIjoiIiwic3RhdHVzIjoiaWRsZSIsImZlZWRiYWNrIjp7ImhpbnQiOiJGb2N1cyBvbiB0aGUgbmVlZCBmb3Igc3RydWN0dXJlIG92ZXIgcmF3IGNhcGFiaWxpdGllcy4iLCJleHBsYW5hdGlvbiI6IlRoZSBicmllZiBjaXRlcyBhIG1pc3Npbmcgc3RydWN0dXJlZCwgcGVyc2lzdGVudCBwZWRhZ29neSBhcyB0aGUgY29yZSBpc3N1ZS4ifX0sInN0YXRlcyI6W10sInNjaGVtYSI6ImltcG9ydCB7IHogfSBmcm9tIFwiem9kXCJcblxuY29uc3QgT3B0aW9uID0gei5zdHJpY3RPYmplY3Qoe1xuICBsYWJlbDogei5zdHJpbmcoKSxcbiAgdmFsdWU6IHouc3RyaW5nKCksXG4gIGRpc2FibGVkOiB6LmJvb2xlYW4oKS5vcHRpb25hbCgpLFxufSlcblxuY29uc3QgRmVlZGJhY2sgPSB6LnN0cmljdE9iamVjdCh7XG4gIGhpbnQ6IHouc3RyaW5nKCkub3B0aW9uYWwoKSxcbiAgZXhwbGFuYXRpb246IHouc3RyaW5nKCkub3B0aW9uYWwoKSxcbn0pXG5cbmNvbnN0IFdpZGdldFN0YXRlID0gei5zdHJpY3RPYmplY3Qoe1xuICBxdWVzdGlvbklkOiB6LnN0cmluZygpLFxuICBpbmRleDogei5udW1iZXIoKS5pbnQoKSxcbiAgdG90YWw6IHoubnVtYmVyKCkuaW50KCksXG4gIHByb21wdDogei5zdHJpbmcoKSxcbiAgb3B0aW9uczogei5hcnJheShPcHRpb24pLm1pbigyKSxcbiAgc2VsZWN0ZWQ6IHouc3RyaW5nKCkub3B0aW9uYWwoKSxcbiAgc3RhdHVzOiB6LmVudW0oW1wiaWRsZVwiLCBcImNvcnJlY3RcIiwgXCJpbmNvcnJlY3RcIl0pLFxuICBmZWVkYmFjazogRmVlZGJhY2ssXG59KVxuXG5leHBvcnQgZGVmYXVsdCBXaWRnZXRTdGF0ZSIsImpzb25TY2hlbWEiOnt9LCJzY2hlbWFNb2RlIjoiem9kIiwic2NoZW1hVmFsaWRpdHkiOiJ2YWxpZCIsInZpZXdWYWxpZGl0eSI6InZhbGlkIiwiZGVmYXVsdFN0YXRlVmFsaWRpdHkiOiJ2YWxpZCJ9"
+}
