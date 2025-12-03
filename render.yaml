@@ -10,7 +10,7 @@ services:
       - key: OPENAI_API_KEY
         sync: false
       - key: PYTHON_VERSION
-        value: 3.11
+        value: 3.11.0
       - key: CORS_ORIGINS
         value: "*"  # Update this with your Vercel frontend URL after deployment
     healthCheckPath: /health
