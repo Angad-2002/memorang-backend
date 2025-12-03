@@ -37,10 +37,27 @@ logging.getLogger("app.server").setLevel(logging.INFO)
 
 from .request_context import RequestContext
 from .server import StarterAppServer, create_chatkit_server
+from .database import init_database, close_database
+from .routers import auth
 
 app = FastAPI(title="ChatKit Starter App API")
 
 _chatkit_server: StarterAppServer | None = create_chatkit_server()
+
+# Include auth router
+app.include_router(auth.router)
+
+
+@app.on_event("startup")
+async def startup_event() -> None:
+    """Initialize database on startup."""
+    await init_database()
+
+
+@app.on_event("shutdown")
+async def shutdown_event() -> None:
+    """Close database connection on shutdown."""
+    await close_database()
 
 # Configure CORS origins from environment variable
 # Default to localhost for development, but allow override for production
@@ -78,7 +95,7 @@ async def chatkit_endpoint(
     request: Request, server: StarterAppServer = Depends(get_chatkit_server)
 ) -> Response:
     payload = await request.body()
-    context = RequestContext(request=request)
+    context = RequestContext.from_request(request)
     result = await server.process(payload, context)
     if isinstance(result, StreamingResult):
         return StreamingResponse(result, media_type="text/event-stream")
@@ -116,7 +133,7 @@ async def upload_file(
             server.store.save_attachment_bytes(attachment_id, content)
         
         # Save attachment metadata via Store interface
-        context = RequestContext(request=request)
+        context = RequestContext.from_request(request)
         await server.store.save_attachment(attachment, context)
         
         # Return attachment JSON as required by direct upload strategy

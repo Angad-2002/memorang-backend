@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 from datetime import datetime
 from typing import Any, AsyncIterator
@@ -31,6 +32,7 @@ from openai.types.responses import (
 )
 
 from .agents.starter_agent import StarterAgentContext, starter_agent
+from .agents.title_agent import title_agent
 from .data.mcq_store import MCQStore
 from .memory_store import MemoryStore
 from .request_context import RequestContext
@@ -47,6 +49,7 @@ class StarterAppServer(ChatKitServer[RequestContext]):
 
         self.mcq_store = MCQStore()
         self.thread_item_converter = StarterAppThreadItemConverter(store=self.store)
+        self.title_agent = title_agent
 
     async def respond(
         self,
@@ -62,7 +65,13 @@ class StarterAppServer(ChatKitServer[RequestContext]):
         2. Converts them to agent input format
         3. Runs the agent with the input
         4. Streams the agent's response back to the client
+        5. Generates a thread title if one doesn't exist
         """
+        # Start title generation task (runs in parallel, doesn't block response)
+        updating_thread_title = asyncio.create_task(
+            self._maybe_update_thread_title(thread, item, context)
+        )
+        
         # Load recent thread items so the agent has conversation context
         items_page = await self.store.load_thread_items(
             thread.id,
@@ -95,6 +104,9 @@ class StarterAppServer(ChatKitServer[RequestContext]):
         # Stream agent response events back to the client
         async for event in stream_agent_response(agent_context, result):
             yield event
+        
+        # Wait for title generation to complete
+        await updating_thread_title
         return
 
     async def action(
@@ -184,6 +196,36 @@ class StarterAppServer(ChatKitServer[RequestContext]):
         }
 
     # -- Helpers ----------------------------------------------------
+
+    async def _maybe_update_thread_title(
+        self,
+        thread: ThreadMetadata,
+        user_message: UserMessageItem | None,
+        context: RequestContext,
+    ) -> None:
+        """Generate and set a thread title if one doesn't exist."""
+        if user_message is None or thread.title is not None:
+            return
+
+        try:
+            # Convert user message to agent input format
+            input_items = await self.thread_item_converter.to_agent_input([user_message])
+            
+            # Run the title agent (it uses AgentContext by default)
+            run = await Runner.run(
+                self.title_agent,
+                input=input_items,
+            )
+            model_result: str = run.final_output
+            # Capitalize first letter and remove trailing punctuation
+            model_result = model_result[:1].upper() + model_result[1:]
+            thread.title = model_result.strip(".")
+            
+            # Save the updated thread
+            await self.store.save_thread(thread, context=context)
+        except Exception as e:
+            # Log error but don't fail the request if title generation fails
+            print(f"[TITLE] Failed to generate title: {e}")
 
     async def _handle_submit_action(
         self,

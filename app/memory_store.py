@@ -22,9 +22,20 @@ class MemoryStore(Store[RequestContext]):
     """Simple in-memory store compatible with the ChatKit Store interface."""
 
     def __init__(self) -> None:
-        self._threads: Dict[str, _ThreadState] = {}
+        # Store threads per user: {user_id: {thread_id: _ThreadState}}
+        self._threads: Dict[str, Dict[str, _ThreadState]] = {}
         self._attachments: Dict[str, Attachment] = {}
         self._attachment_bytes: Dict[str, bytes] = {}
+    
+    def _get_user_id(self, context: RequestContext) -> str:
+        """Get user ID from context, or use 'anonymous' if not authenticated."""
+        return context.user_id or "anonymous"
+    
+    def _get_user_threads(self, user_id: str) -> Dict[str, _ThreadState]:
+        """Get thread dictionary for a specific user."""
+        if user_id not in self._threads:
+            self._threads[user_id] = {}
+        return self._threads[user_id]
 
     @staticmethod
     def _coerce_thread_metadata(thread: ThreadMetadata | Thread) -> ThreadMetadata:
@@ -41,18 +52,22 @@ class MemoryStore(Store[RequestContext]):
 
     # -- Thread metadata -------------------------------------------------
     async def load_thread(self, thread_id: str, context: RequestContext) -> ThreadMetadata:
-        state = self._threads.get(thread_id)
+        user_id = self._get_user_id(context)
+        user_threads = self._get_user_threads(user_id)
+        state = user_threads.get(thread_id)
         if not state:
             raise NotFoundError(f"Thread {thread_id} not found")
         return self._coerce_thread_metadata(state.thread)
 
     async def save_thread(self, thread: ThreadMetadata, context: RequestContext) -> None:
+        user_id = self._get_user_id(context)
+        user_threads = self._get_user_threads(user_id)
         metadata = self._coerce_thread_metadata(thread)
-        state = self._threads.get(thread.id)
+        state = user_threads.get(thread.id)
         if state:
             state.thread = metadata
         else:
-            self._threads[thread.id] = _ThreadState(
+            user_threads[thread.id] = _ThreadState(
                 thread=metadata,
                 items=[],
             )
@@ -64,8 +79,10 @@ class MemoryStore(Store[RequestContext]):
         order: str,
         context: RequestContext,
     ) -> Page[ThreadMetadata]:
+        user_id = self._get_user_id(context)
+        user_threads = self._get_user_threads(user_id)
         threads = sorted(
-            (self._coerce_thread_metadata(state.thread) for state in self._threads.values()),
+            (self._coerce_thread_metadata(state.thread) for state in user_threads.values()),
             key=lambda t: t.created_at or datetime.min,
             reverse=(order == "desc"),
         )
@@ -87,21 +104,25 @@ class MemoryStore(Store[RequestContext]):
         )
 
     async def delete_thread(self, thread_id: str, context: RequestContext) -> None:
-        self._threads.pop(thread_id, None)
+        user_id = self._get_user_id(context)
+        user_threads = self._get_user_threads(user_id)
+        user_threads.pop(thread_id, None)
 
     # -- Thread items ----------------------------------------------------
-    def _thread_state(self, thread_id: str) -> _ThreadState:
-        state = self._threads.get(thread_id)
+    def _thread_state(self, thread_id: str, context: RequestContext) -> _ThreadState:
+        user_id = self._get_user_id(context)
+        user_threads = self._get_user_threads(user_id)
+        state = user_threads.get(thread_id)
         if state is None:
             state = _ThreadState(
                 thread=ThreadMetadata(id=thread_id, created_at=datetime.utcnow()),
                 items=[],
             )
-            self._threads[thread_id] = state
+            user_threads[thread_id] = state
         return state
 
-    def _items(self, thread_id: str) -> List[ThreadItem]:
-        state = self._thread_state(thread_id)
+    def _items(self, thread_id: str, context: RequestContext) -> List[ThreadItem]:
+        state = self._thread_state(thread_id, context)
         return state.items
 
     async def load_thread_items(
@@ -112,7 +133,7 @@ class MemoryStore(Store[RequestContext]):
         order: str,
         context: RequestContext,
     ) -> Page[ThreadItem]:
-        items = [item.model_copy(deep=True) for item in self._items(thread_id)]
+        items = [item.model_copy(deep=True) for item in self._items(thread_id, context)]
         items.sort(
             key=lambda item: getattr(item, "created_at", datetime.utcnow()),
             reverse=(order == "desc"),
@@ -133,10 +154,10 @@ class MemoryStore(Store[RequestContext]):
     async def add_thread_item(
         self, thread_id: str, item: ThreadItem, context: RequestContext
     ) -> None:
-        self._items(thread_id).append(item.model_copy(deep=True))
+        self._items(thread_id, context).append(item.model_copy(deep=True))
 
     async def save_item(self, thread_id: str, item: ThreadItem, context: RequestContext) -> None:
-        items = self._items(thread_id)
+        items = self._items(thread_id, context)
         for idx, existing in enumerate(items):
             if existing.id == item.id:
                 items[idx] = item.model_copy(deep=True)
@@ -144,7 +165,7 @@ class MemoryStore(Store[RequestContext]):
         items.append(item.model_copy(deep=True))
 
     async def load_item(self, thread_id: str, item_id: str, context: RequestContext) -> ThreadItem:
-        for item in self._items(thread_id):
+        for item in self._items(thread_id, context):
             if item.id == item_id:
                 return item.model_copy(deep=True)
         raise NotFoundError(f"Item {item_id} not found")
@@ -152,8 +173,11 @@ class MemoryStore(Store[RequestContext]):
     async def delete_thread_item(
         self, thread_id: str, item_id: str, context: RequestContext
     ) -> None:
-        items = self._items(thread_id)
-        self._threads[thread_id].items = [item for item in items if item.id != item_id]
+        user_id = self._get_user_id(context)
+        user_threads = self._get_user_threads(user_id)
+        items = self._items(thread_id, context)
+        if thread_id in user_threads:
+            user_threads[thread_id].items = [item for item in items if item.id != item_id]
 
     # -- Files -----------------------------------------------------------
     async def save_attachment(
