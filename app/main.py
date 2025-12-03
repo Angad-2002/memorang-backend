@@ -17,6 +17,7 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Upload
 from fastapi.responses import Response, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
+import os
 
 # Load environment variables from .env file
 env_path = Path(__file__).parent.parent / ".env"
@@ -41,10 +42,19 @@ app = FastAPI(title="ChatKit Starter App API")
 
 _chatkit_server: StarterAppServer | None = create_chatkit_server()
 
+# Configure CORS origins from environment variable
+# Default to localhost for development, but allow override for production
+cors_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+# Support "*" for allowing all origins, or comma-separated list
+if cors_origins_env == "*":
+    cors_origins = ["*"]
+else:
+    cors_origins = [origin.strip() for origin in cors_origins_env.split(",")]
+
 # Add CORS middleware to allow frontend to connect
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
